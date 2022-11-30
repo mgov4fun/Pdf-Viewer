@@ -12,6 +12,8 @@ import java.io.File
 import java.io.InputStream
 import java.net.URL
 
+private const val BASE64_DATAURL = "data:application/pdf;base64,"
+
 /**
  * Created by Rajat on 11,July,2020
  */
