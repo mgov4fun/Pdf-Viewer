@@ -1,12 +1,15 @@
 package com.rajat.pdfviewer
 
 import android.content.Context
+import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.io.BufferedInputStream
+import java.io.ByteArrayInputStream
 import java.io.File
+import java.io.InputStream
 import java.net.URL
 
 /**
@@ -26,19 +29,32 @@ internal class PdfDownloader(url: String, private val listener: StatusListener) 
         GlobalScope.async { download(url) }
     }
 
-    private fun download(downloadUrl: String) {
+ private fun download(downloadUrl: String) {
+        val bufferSize = 8192
+
         GlobalScope.launch(Dispatchers.Main) { listener.onDownloadStart() }
         val outputFile = File(listener.getContext().cacheDir, "downloaded_pdf.pdf")
         if (outputFile.exists())
             outputFile.delete()
-        try {
-            val bufferSize = 8192
-            val url = URL(downloadUrl)
-            val connection = url.openConnection()
-            connection.connect()
 
-            val totalLength = connection.contentLength
-            val inputStream = BufferedInputStream(url.openStream(), bufferSize)
+        try {
+            var inputStream: InputStream? = null
+            var totalLength: Number
+            //Check if base64-data string
+            if (downloadUrl.startsWith(BASE64_DATAURL)){
+                val base64Data = downloadUrl.substring(BASE64_DATAURL.length + 1);
+                val bytes = Base64.decode(base64Data, Base64.DEFAULT);
+                inputStream = ByteArrayInputStream(bytes);
+                totalLength = bytes.size;
+            }else{
+                val url = URL(downloadUrl)
+                val connection = url.openConnection()
+                connection.connect()
+
+                totalLength = connection.contentLength
+                inputStream = BufferedInputStream(url.openStream(), bufferSize)
+            }
+
             val outputStream = outputFile.outputStream()
             var downloaded = 0
 
@@ -51,8 +67,8 @@ internal class PdfDownloader(url: String, private val listener: StatusListener) 
                     downloaded += bufferSize
                     GlobalScope.launch(Dispatchers.Main) {
                         listener.onDownloadProgress(
-                            downloaded.toLong(),
-                            totalLength.toLong()
+                                downloaded.toLong(),
+                                totalLength.toLong()
                         )
                     }
                 }
