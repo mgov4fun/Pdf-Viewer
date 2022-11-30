@@ -124,7 +124,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 } else {
                     Toast.makeText(
                         this,
-                        "No Internet Connection. Please Check your internet connection.",
+                        "Keine Internetverbindung. Bitte um Überprüfung.",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -296,7 +296,7 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun onPdfError() {
-        Toast.makeText(this, "Pdf has been corrupted", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Die Datei ist beschädigt", Toast.LENGTH_SHORT).show()
         true.showProgressBar()
         finish()
     }
@@ -309,7 +309,7 @@ class PdfViewerActivity : AppCompatActivity() {
         override fun onReceive(context: Context?, intent: Intent?) {
             Toast.makeText(
                 context,
-                "File is Downloaded Successfully",
+                "Datei erfolgreich heruntergeladen",
                 Toast.LENGTH_SHORT
             ).show()
             context?.unregisterReceiver(this)
@@ -363,7 +363,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 } catch (e: Exception) {
                     Toast.makeText(
                         this,
-                        "Unable to download file",
+                        "Datei konnte nicht heruntergeladen werden",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
