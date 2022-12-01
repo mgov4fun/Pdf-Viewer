@@ -335,7 +335,7 @@ class PdfViewerActivity : AppCompatActivity() {
                             fileName
                         )
                     } else {
-                        if (fileUrl.startsWith(BASE64_DATAURL)){
+                        if (fileUrl!!.startsWith(BASE64_DATAURL)){
                             //base64 data
                             val base64Data = fileUrl.substring(BASE64_DATAURL.length);
                             val bytes = Base64.decode(base64Data, Base64.DEFAULT);
