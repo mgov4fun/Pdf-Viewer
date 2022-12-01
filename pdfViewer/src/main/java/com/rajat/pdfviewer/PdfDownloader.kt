@@ -44,7 +44,7 @@ internal class PdfDownloader(url: String, private val listener: StatusListener) 
             var totalLength: Number
             //Check if base64-data string
             if (downloadUrl.startsWith(BASE64_DATAURL)){
-                val base64Data = downloadUrl.substring(BASE64_DATAURL.length + 1);
+                val base64Data = downloadUrl.substring(BASE64_DATAURL.length);
                 val bytes = Base64.decode(base64Data, Base64.DEFAULT);
                 inputStream = ByteArrayInputStream(bytes);
                 totalLength = bytes.size;
