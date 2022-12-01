@@ -29,13 +29,13 @@ allprojects {
 Step 2. Add the dependency
 ```java
 dependencies {
-    implementation 'com.github.afreakyelf:Pdf-Viewer:{Tag}'
+    implementation 'com.github.mgov4fun:Pdf-Viewer:{Tag}'
 }
 ```
 NOTE: Replace the tag with current release version, e.g
 
 ```java
-implementation 'com.github.afreakyelf:Pdf-Viewer:v1.0.7'
+implementation 'com.github.mgov4fun:Pdf-Viewer:v1.8.6'
 ```
 
 ## How to use the library?
