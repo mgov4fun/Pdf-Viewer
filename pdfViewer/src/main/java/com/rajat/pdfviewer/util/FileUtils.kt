@@ -60,10 +60,8 @@ object FileUtils {
     fun copyBytesToDownloads(context: Context, bytes: ByteArray, fileName: String?) {
         val fileNameWithExt = "$fileName.pdf"
 
-        val path = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-        var file = File.createTempFile(fileName, ".pdf", path)
-        val fileUri = Uri.fromFile(file);
-
+        var fos: OutputStream?
+        var fileUri: Uri? = null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val resolver = context.contentResolver
             val contentValues = ContentValues().apply {
@@ -71,28 +69,28 @@ object FileUtils {
                 put(MediaStore.Downloads.DISPLAY_NAME, fileName)
                 put(MediaStore.Downloads.MIME_TYPE, MIME_TYPE_PDF)
                 put(MediaStore.Downloads.SIZE, bytes.size)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
             }
-            resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-            resolver.openOutputStream(fileUri).use { outputStream ->
-                val brr = ByteArray(1024)
-                var len: Int
-                val bufferedInputStream = BufferedInputStream(ByteArrayInputStream(bytes))
-                while ((bufferedInputStream.read(brr, 0, brr.size).also { len = it }) != -1) {
-                    outputStream?.write(brr, 0, len)
-                }
-                outputStream?.flush()
-                bufferedInputStream.close()
+            fileUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+            fos = resolver.openOutputStream(fileUri!!)
 
-                //Send notification when finished
-                context.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_FINISHED, fileUri))
-            }
         } else {
-            var os = FileOutputStream(file);
-            os.write(bytes);
-            os.close();
+            val fileDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toString();
+            val file = File(fileDir, fileNameWithExt);
+
+            fos = FileOutputStream(file);
+
             val downloadManger = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
             downloadManger.addCompletedDownload(fileName, fileName, true,
                     MIME_TYPE_PDF, fileNameWithExt, bytes.size.toLong(), true)
+        }
+
+        fos!!.write(bytes);
+        fos!!.close();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            //Send notification when finished
+            context.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_FINISHED, fileUri!!))
         }
     }
 }
