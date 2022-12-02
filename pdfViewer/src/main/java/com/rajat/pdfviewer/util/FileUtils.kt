@@ -45,24 +45,12 @@ object FileUtils {
     }
 
     @Throws(IOException::class)
-    fun downloadFile(context: Context, assetName: String, filePath: String, fileName: String?) {
-
-        val dirPath = "${Environment.getExternalStorageDirectory()}/${filePath}"
-        val outFile = File(dirPath)
-        //Create New File if not present
-        if (!outFile.exists()) {
-            outFile.mkdirs()
-        }
-        val outFile1 = File(dirPath, "/$fileName.pdf")
-        copy(context.assets.open(assetName), outFile1)
-    }
-
-    @Throws(IOException::class)
     fun copyBytesToDownloads(context: Context, bytes: ByteArray, fileName: String?): Uri? {
         val fileNameWithExt = "$fileName.pdf"
 
         var fos: OutputStream?
         var fileUri: Uri? = null
+        val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), fileNameWithExt)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val resolver = context.contentResolver
             val contentValues = ContentValues().apply {
@@ -76,7 +64,6 @@ object FileUtils {
             fos = resolver.openOutputStream(fileUri!!)
 
         } else {
-            val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), fileNameWithExt);
             fileUri = Uri.fromFile(file);
             fos = FileOutputStream(file);
         }
@@ -86,7 +73,7 @@ object FileUtils {
 
         val downloadManger = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         downloadManger.addCompletedDownload(fileName, fileName, false,
-            MIME_TYPE_PDF, fileUri!!.path, bytes.size.toLong(), true)
+            MIME_TYPE_PDF, file.absolutePath, bytes.size.toLong(), true)
             
         return fileUri
     }
