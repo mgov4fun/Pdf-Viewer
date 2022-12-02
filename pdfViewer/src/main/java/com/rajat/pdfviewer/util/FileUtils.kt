@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.app.NotificationManagerCompat
+import android.widget.Toast
 import java.io.*
 
 
@@ -87,6 +88,11 @@ object FileUtils {
         val downloadManger = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         downloadManger.addCompletedDownload(fileName, fileName, false,
             MIME_TYPE_PDF, file.absolutePath, bytes.size.toLong(), true)
+        Toast.makeText(
+                context,
+                "Datei erfolgreich heruntergeladen",
+                Toast.LENGTH_SHORT
+            ).show()
             
         return fileUri
     }
