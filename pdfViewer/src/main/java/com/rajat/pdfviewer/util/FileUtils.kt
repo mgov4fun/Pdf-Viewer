@@ -1,6 +1,6 @@
 package com.rajat.pdfviewer.util
 
-import android.app.DownloadManager
+import android.app.*
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -8,6 +8,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.core.app.NotificationManagerCompat
+import at.gv.bka.serviceportal.qanew.R
+import at.gv.brz.log.helper.ViewHelper
 import java.io.*
 
 
@@ -57,7 +60,7 @@ object FileUtils {
     }
 
     @Throws(IOException::class)
-    fun copyBytesToDownloads(context: Context, bytes: ByteArray, fileName: String?) {
+    fun copyBytesToDownloads(context: Context, bytes: ByteArray, fileName: String?): Uri? {
         val fileNameWithExt = "$fileName.pdf"
 
         var fos: OutputStream?
@@ -75,22 +78,18 @@ object FileUtils {
             fos = resolver.openOutputStream(fileUri!!)
 
         } else {
-            val fileDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toString();
-            val file = File(fileDir, fileNameWithExt);
-
+            val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), fileNameWithExt);
+            fileUri = Uri.fromFile(file);
             fos = FileOutputStream(file);
-
-            val downloadManger = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            downloadManger.addCompletedDownload(fileName, fileName, true,
-                    MIME_TYPE_PDF, fileNameWithExt, bytes.size.toLong(), true)
         }
 
         fos!!.write(bytes);
         fos!!.close();
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            //Send notification when finished
-            context.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_FINISHED, fileUri!!))
-        }
+        val downloadManger = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        downloadManger.addCompletedDownload(fileName, fileName, false,
+            MIME_TYPE_PDF, fileUri!!.path, bytes.size.toLong(), true)
+            
+        return fileUri
     }
 }
