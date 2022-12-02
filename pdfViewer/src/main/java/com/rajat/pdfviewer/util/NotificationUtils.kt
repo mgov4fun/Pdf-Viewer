@@ -25,7 +25,7 @@ class NotificationUtils {
         notIntent.setDataAndType(fileUri, MIME_TYPE_PDF)
         val pendingIntent = PendingIntent
             .getActivity(
-                AttachmentViewer.cordovaInterface.activity.applicationContext,
+                context,
                 0, notIntent, PendingIntent.FLAG_IMMUTABLE
             )
 

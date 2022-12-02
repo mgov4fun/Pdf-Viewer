@@ -9,8 +9,6 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.app.NotificationManagerCompat
-import at.gv.bka.serviceportal.qanew.R
-import at.gv.brz.log.helper.ViewHelper
 import java.io.*
 
 
