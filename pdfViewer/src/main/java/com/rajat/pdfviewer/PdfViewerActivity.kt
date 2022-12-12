@@ -72,7 +72,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 val outputStream = outputFile.outputStream()
                 try {
                     outputStream.write(bytes)
-                    fileUrl = Uri.fromFile(outputFile).toString()
+                    fileUrl = outputFile.getAbsolutePath()
                     isPDFFromPath = true
                 }finally {
                     outputStream.close()
@@ -346,7 +346,7 @@ class PdfViewerActivity : AppCompatActivity() {
 
                 try {
                     if (isPDFFromPath) {
-                        FileUtils.copyFileToDownloads(this, fileUrl!!, fileUrl)
+                        FileUtils.copyFileToDownloads(this, fileUrl!!, fileName)
                     } else {
                         //Url
                         val downloadManger = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager?
