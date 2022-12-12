@@ -12,8 +12,6 @@ import java.io.File
 import java.io.InputStream
 import java.net.URL
 
-private const val BASE64_DATAURL = "data:application/pdf;base64,"
-
 /**
  * Created by Rajat on 11,July,2020
  */
@@ -42,20 +40,12 @@ internal class PdfDownloader(url: String, private val listener: StatusListener) 
         try {
             var inputStream: InputStream? = null
             var totalLength: Number
-            //Check if base64-data string
-            if (downloadUrl.startsWith(BASE64_DATAURL)){
-                val base64Data = downloadUrl.substring(BASE64_DATAURL.length);
-                val bytes = Base64.decode(base64Data, Base64.DEFAULT);
-                inputStream = ByteArrayInputStream(bytes);
-                totalLength = bytes.size;
-            }else{
-                val url = URL(downloadUrl)
-                val connection = url.openConnection()
-                connection.connect()
+            val url = URL(downloadUrl)
+            val connection = url.openConnection()
+            connection.connect()
 
-                totalLength = connection.contentLength
-                inputStream = BufferedInputStream(url.openStream(), bufferSize)
-            }
+            totalLength = connection.contentLength
+            inputStream = BufferedInputStream(url.openStream(), bufferSize)
 
             val outputStream = outputFile.outputStream()
             var downloaded = 0

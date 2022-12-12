@@ -25,6 +25,7 @@ import androidx.core.content.ContextCompat
 import com.rajat.pdfviewer.util.FileUtils
 import kotlinx.android.synthetic.main.activity_pdf_viewer.*
 import kotlinx.android.synthetic.main.pdf_view_tool_bar.*
+import okhttp3.internal.closeQuietly
 import java.io.File
 
 private const val BASE64_DATAURL = "data:application/pdf;base64,"
@@ -60,11 +61,29 @@ class PdfViewerActivity : AppCompatActivity() {
             enableDownload: Boolean = true
         ): Intent {
             val intent = Intent(context, PdfViewerActivity::class.java)
-            intent.putExtra(FILE_URL, pdfUrl)
+            var fileUrl = pdfUrl
+            isPDFFromPath = false
+            if (pdfUrl!!.startsWith(BASE64_DATAURL)){
+                //base64 data - store as cache file; if not intent parcel data can exceed 1MB
+                val base64Data = pdfUrl.substring(BASE64_DATAURL.length)
+                val bytes = Base64.decode(base64Data, Base64.DEFAULT)
+                val outputFile = File(context!!.cacheDir, "base64_blob.pdf")
+                if (outputFile.exists())
+                    outputFile.delete()
+                val outputStream = outputFile.outputStream()
+                try {
+                    outputStream.write(bytes)
+                    fileUrl = Uri.fromFile(outputFile).toString()
+                    isPDFFromPath = true
+                }finally {
+                    outputStream.closeQuietly()
+                }
+            }
+            intent.putExtra(FILE_URL, fileUrl)
             intent.putExtra(FILE_TITLE, pdfTitle)
             intent.putExtra(FILE_DIRECTORY, directoryName)
             intent.putExtra(ENABLE_FILE_DOWNLOAD, enableDownload)
-            isPDFFromPath = false
+
             return intent
         }
 
@@ -328,40 +347,28 @@ class PdfViewerActivity : AppCompatActivity() {
 
                 try {
                     if (isPDFFromPath) {
-                        FileUtils.downloadFile(
-                            this,
-                            fileUrl!!,
-                            directoryName!!,
-                            fileName
-                        )
+                        FileUtils.copyFileToDownloads(this, fileUrl!!, fileUrl)
                     } else {
-                        if (fileUrl!!.startsWith(BASE64_DATAURL)){
-                            //base64 data
-                            val base64Data = fileUrl.substring(BASE64_DATAURL.length);
-                            val bytes = Base64.decode(base64Data, Base64.DEFAULT);
-                            FileUtils.copyBytesToDownloads(this, bytes, fileName)
-                        }else{
-                            //Url
-                            val downloadManger = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager?
-                            val downloadUrl = Uri.parse(fileUrl)
-                            val cookie = CookieManager.getInstance().getCookie(fileUrl);
-                            val request = DownloadManager.Request(downloadUrl)
-                            request.setAllowedOverRoaming(true)
-                            request.setTitle(fileName)
-                            request.setDescription("Herunterladen $fileName")
-                            request.setDestinationInExternalPublicDir(
-                                Environment.DIRECTORY_DOWNLOADS,
-                                filePath
-                            )
-                            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                            if (!TextUtils.isEmpty(cookie))
-                                request.addRequestHeader("Cookie", cookie)
-                            registerReceiver(
-                                onComplete,
-                                IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-                            )
-                            downloadManger!!.enqueue(request)
-                        }
+                        //Url
+                        val downloadManger = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager?
+                        val downloadUrl = Uri.parse(fileUrl)
+                        val cookie = CookieManager.getInstance().getCookie(fileUrl);
+                        val request = DownloadManager.Request(downloadUrl)
+                        request.setAllowedOverRoaming(true)
+                        request.setTitle(fileName)
+                        request.setDescription("Herunterladen $fileName")
+                        request.setDestinationInExternalPublicDir(
+                            Environment.DIRECTORY_DOWNLOADS,
+                            filePath
+                        )
+                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        if (!TextUtils.isEmpty(cookie))
+                            request.addRequestHeader("Cookie", cookie)
+                        registerReceiver(
+                            onComplete,
+                            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+                        )
+                        downloadManger!!.enqueue(request)
                     }
                 } catch (e: Exception) {
                     Toast.makeText(
