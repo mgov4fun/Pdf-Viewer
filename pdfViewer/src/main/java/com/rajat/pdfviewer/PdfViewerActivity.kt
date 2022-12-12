@@ -25,7 +25,6 @@ import androidx.core.content.ContextCompat
 import com.rajat.pdfviewer.util.FileUtils
 import kotlinx.android.synthetic.main.activity_pdf_viewer.*
 import kotlinx.android.synthetic.main.pdf_view_tool_bar.*
-import okhttp3.internal.closeQuietly
 import java.io.File
 
 private const val BASE64_DATAURL = "data:application/pdf;base64,"
@@ -76,7 +75,7 @@ class PdfViewerActivity : AppCompatActivity() {
                     fileUrl = Uri.fromFile(outputFile).toString()
                     isPDFFromPath = true
                 }finally {
-                    outputStream.closeQuietly()
+                    outputStream.close()
                 }
             }
             intent.putExtra(FILE_URL, fileUrl)
