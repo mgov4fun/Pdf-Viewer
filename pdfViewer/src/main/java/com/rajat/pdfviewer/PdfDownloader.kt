@@ -31,10 +31,8 @@ internal class PdfDownloader(url: String, private val listener: StatusListener) 
         val outputFile = File(listener.getContext().cacheDir, "downloaded_pdf.pdf")
         if (outputFile.exists())
             outputFile.delete()
-
         try {
             val bufferSize = 8192
-            var totalLength: Number
             val url = URL(downloadUrl)
             val connection = url.openConnection()
             connection.connect()
@@ -53,8 +51,8 @@ internal class PdfDownloader(url: String, private val listener: StatusListener) 
                     downloaded += bufferSize
                     listener.getCoroutineScope().launch(Dispatchers.Main) {
                         listener.onDownloadProgress(
-                                downloaded.toLong(),
-                                totalLength.toLong()
+                            downloaded.toLong(),
+                            totalLength.toLong()
                         )
                     }
                 }
