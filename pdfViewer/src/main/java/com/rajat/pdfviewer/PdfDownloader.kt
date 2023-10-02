@@ -2,13 +2,10 @@ package com.rajat.pdfviewer
 
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
-import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.BufferedInputStream
-import java.io.ByteArrayInputStream
 import java.io.File
-import java.io.InputStream
 import java.net.URL
 
 /**
@@ -36,15 +33,14 @@ internal class PdfDownloader(url: String, private val listener: StatusListener) 
             outputFile.delete()
 
         try {
-            var inputStream: InputStream? = null
+            val bufferSize = 8192
             var totalLength: Number
             val url = URL(downloadUrl)
             val connection = url.openConnection()
             connection.connect()
 
-            totalLength = connection.contentLength
-            inputStream = BufferedInputStream(url.openStream(), bufferSize)
-
+            val totalLength = connection.contentLength
+            val inputStream = BufferedInputStream(url.openStream(), bufferSize)
             val outputStream = outputFile.outputStream()
             var downloaded = 0
 
