@@ -1,10 +1,9 @@
 package com.rajat.pdfviewer
 
 import android.content.Context
+import kotlinx.coroutines.CoroutineScope
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
@@ -23,16 +22,15 @@ internal class PdfDownloader(url: String, private val listener: StatusListener) 
         fun onDownloadProgress(currentBytes: Long, totalBytes: Long) {}
         fun onDownloadSuccess(absolutePath: String) {}
         fun onError(error: Throwable) {}
+        fun getCoroutineScope(): CoroutineScope
     }
 
     init {
-        GlobalScope.async { download(url) }
+        listener.getCoroutineScope().launch(Dispatchers.IO) { download(url) }
     }
 
- private fun download(downloadUrl: String) {
-        val bufferSize = 8192
-
-        GlobalScope.launch(Dispatchers.Main) { listener.onDownloadStart() }
+    private fun download(downloadUrl: String) {
+        listener.getCoroutineScope().launch(Dispatchers.Main) { listener.onDownloadStart() }
         val outputFile = File(listener.getContext().cacheDir, "downloaded_pdf.pdf")
         if (outputFile.exists())
             outputFile.delete()
@@ -57,7 +55,7 @@ internal class PdfDownloader(url: String, private val listener: StatusListener) 
                     break
                 if (totalLength > 0) {
                     downloaded += bufferSize
-                    GlobalScope.launch(Dispatchers.Main) {
+                    listener.getCoroutineScope().launch(Dispatchers.Main) {
                         listener.onDownloadProgress(
                                 downloaded.toLong(),
                                 totalLength.toLong()
@@ -68,9 +66,9 @@ internal class PdfDownloader(url: String, private val listener: StatusListener) 
             } while (true)
         } catch (e: Exception) {
             e.printStackTrace()
-            GlobalScope.launch(Dispatchers.Main) { listener.onError(e) }
+            listener.getCoroutineScope().launch(Dispatchers.Main) { listener.onError(e) }
             return
         }
-        GlobalScope.launch(Dispatchers.Main) { listener.onDownloadSuccess(outputFile.absolutePath) }
+        listener.getCoroutineScope().launch(Dispatchers.Main) { listener.onDownloadSuccess(outputFile.absolutePath) }
     }
 }

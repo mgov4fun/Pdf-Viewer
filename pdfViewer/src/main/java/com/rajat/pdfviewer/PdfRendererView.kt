@@ -3,6 +3,7 @@ package com.rajat.pdfviewer
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.TypedArray
+import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.AttributeSet
@@ -14,12 +15,16 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.LifecycleCoroutineScope
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.NO_POSITION
 import kotlinx.android.synthetic.main.pdf_rendererview.view.*
+import kotlinx.coroutines.CoroutineScope
 import java.io.File
 import java.net.URLEncoder
 
@@ -40,9 +45,12 @@ class PdfRendererView @JvmOverloads constructor(
     private var showDivider = true
     private var divider: Drawable? = null
     private var runnable = Runnable {}
-    private var pdfRendererCoreInitialised = false
+    var enableLoadingForPages: Boolean = false
 
+    private var pdfRendererCoreInitialised = false
+    var pageMargin: Rect = Rect(0,0,0,0)
     var statusListener: StatusCallBack? = null
+
     val totalPageCount: Int
         get() {
             return pdfRendererCore.getPageCount()
@@ -59,7 +67,8 @@ class PdfRendererView @JvmOverloads constructor(
     fun initWithUrl(
         url: String,
         pdfQuality: PdfQuality = this.quality,
-        engine: PdfEngine = this.engine
+        engine: PdfEngine = this.engine,
+        lifecycleScope: LifecycleCoroutineScope = (context as AppCompatActivity).lifecycleScope
     ) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP || engine == PdfEngine.GOOGLE) {
             initUnderKitkat(url)
@@ -89,6 +98,8 @@ class PdfRendererView @JvmOverloads constructor(
                 error.printStackTrace()
                 statusListener?.onError(error)
             }
+
+            override fun getCoroutineScope(): CoroutineScope = lifecycleScope
         })
     }
 
@@ -107,7 +118,7 @@ class PdfRendererView @JvmOverloads constructor(
     private fun init(file: File, pdfQuality: PdfQuality) {
         pdfRendererCore = PdfRendererCore(context, file, pdfQuality)
         pdfRendererCoreInitialised = true
-        pdfViewAdapter = PdfViewAdapter(pdfRendererCore)
+        pdfViewAdapter = PdfViewAdapter(pdfRendererCore, pageMargin, enableLoadingForPages)
         val v = LayoutInflater.from(context).inflate(R.layout.pdf_rendererview, this, false)
         addView(v)
         recyclerView = findViewById(R.id.recyclerView)
@@ -134,11 +145,11 @@ class PdfRendererView @JvmOverloads constructor(
         override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
             super.onScrolled(recyclerView, dx, dy)
             (recyclerView.layoutManager as LinearLayoutManager).run {
-                var foundPosition = findFirstCompletelyVisibleItemPosition()
+                var foundPosition : Int = findFirstCompletelyVisibleItemPosition()
 
                 pageNo.run {
                     if (foundPosition != NO_POSITION)
-                        text = context.getString(R.string.pdfView_page_no,"${(foundPosition + 1)}","$totalPageCount")
+                        text = context.getString(R.string.pdfView_page_no,foundPosition + 1,totalPageCount)
                     pageNo.visibility = View.VISIBLE
                 }
 
@@ -202,6 +213,7 @@ class PdfRendererView @JvmOverloads constructor(
             statusListener?.onError(Throwable("Web resource error"))
         }
 
+        @Deprecated("Deprecated in Java")
         override fun onReceivedError(
             view: WebView?,
             errorCode: Int,
@@ -232,6 +244,16 @@ class PdfRendererView @JvmOverloads constructor(
         engine = PdfEngine.values().first { it.value == engineValue }
         showDivider = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_showDivider, true)
         divider = typedArray.getDrawable(R.styleable.PdfRendererView_pdfView_divider)
+        enableLoadingForPages = typedArray.getBoolean(R.styleable.PdfRendererView_pdfView_enableLoadingForPages, enableLoadingForPages)
+
+        val marginDim = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_margin, 0)
+        pageMargin = Rect(marginDim, marginDim, marginDim, marginDim).apply {
+            top = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginTop, top)
+            left = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginLeft, left)
+            right = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginRight, right)
+            bottom = typedArray.getDimensionPixelSize(R.styleable.PdfRendererView_pdfView_page_marginBottom, bottom)
+
+        }
 
         typedArray.recycle()
     }
