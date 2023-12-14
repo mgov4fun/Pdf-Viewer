@@ -22,6 +22,13 @@
         <attr name="pdfView_page_marginBottom" format="reference|dimension"  />
     </declare-styleable>
 
+    <declare-styleable name="PdfRendererView_Strings">
+        <attr name="permission_required" format="reference|string"/>
+        <attr name="permission_required_title" format="reference|string"/>
+        <attr name="pdf_viewer_grant" format="reference|string"/>
+        <attr name="pdf_viewer_cancel" format="reference|string"/>
+    </declare-styleable>
+
     <!-- icons -->
     <attr name="pdfView_backIcon" format="reference" />
     <attr name="pdfView_downloadIcon" format="reference" />

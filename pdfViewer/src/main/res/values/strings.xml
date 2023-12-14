@@ -3,4 +3,8 @@
     <string name="pdfView_appName">Pdf View</string>
     <string name="content_des">PDF PAGE</string>
     <string name="pdfView_page_no">%1$d/%2$d</string>
+    <string name="permission_required">Zum Herunterladen der Datei ist eine Speichererlaubnis erforderlich. Möchten Sie diese Genehmigung erteilen?</string>
+    <string name="permission_required_title">Erlaubnis erforderlich</string>
+    <string name="pdf_viewer_grant">Erlauben</string>
+    <string name="pdf_viewer_cancel">Abbrechen</string>
 </resources>

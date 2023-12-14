@@ -1,6 +1,7 @@
 package com.rajat.pdfviewer
 
 import android.Manifest.permission
+import android.app.AlertDialog
 import android.app.DownloadManager
 import android.content.*
 import android.content.pm.PackageManager
@@ -19,6 +20,7 @@ import android.view.View
 import android.view.View.GONE
 import android.webkit.CookieManager
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -35,6 +37,10 @@ private const val BASE64_DATAURL = "data:application/pdf;base64,"
 
 class PdfViewerActivity : AppCompatActivity() {
 
+    private lateinit var permission_required: String
+    private lateinit var permission_required_title: String
+    private lateinit var pdf_viewer_grant: String
+    private lateinit var pdf_viewer_cancel: String
     private var permissionGranted: Boolean? = false
     private var menuItem: MenuItem? = null
     private var fileUrl: String? = null
@@ -129,6 +135,20 @@ class PdfViewerActivity : AppCompatActivity() {
 
         engine = PdfEngine.INTERNAL
 
+        val typedArray = obtainStyledAttributes(R.styleable.PdfRendererView_Strings)
+        permission_required =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_permission_required)
+                ?: getString(R.string.permission_required)
+        permission_required_title =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_permission_required_title)
+                ?: getString(R.string.permission_required_title)
+        pdf_viewer_cancel =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_pdf_viewer_cancel)
+                ?: getString(R.string.pdf_viewer_cancel)
+        pdf_viewer_grant =
+            typedArray.getString(R.styleable.PdfRendererView_Strings_pdf_viewer_grant)
+                ?: getString(R.string.pdf_viewer_grant)
+
         init()
     }
 
@@ -218,11 +238,20 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.download) checkPermission(PERMISSION_CODE)
-        if (item.itemId == android.R.id.home) {
-            finish() // close this activity and return to preview activity (if there is any)
+        // Handle item selection.
+        return when (item.itemId) {
+            R.id.download -> {
+                checkAndStartDownload()
+                true
+            }
+
+            android.R.id.home -> {
+                finish()
+                true
+            }
+
+            else -> super.onOptionsItemSelected(item)
         }
-        return super.onOptionsItemSelected(item)
     }
 
     private fun loadFileFromNetwork(fileUrl: String?) {
@@ -332,6 +361,47 @@ class PdfViewerActivity : AppCompatActivity() {
                 Toast.LENGTH_SHORT
             ).show()
             context?.unregisterReceiver(this)
+        }
+    }
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            downloadPdf()
+        } else {
+            // Show an AlertDialog here
+            AlertDialog.Builder(this)
+                .setTitle(permission_required_title)
+                .setMessage(permission_required)
+                .setPositiveButton(pdf_viewer_grant) { dialog: DialogInterface, which: Int ->
+                    // Request the permission again
+                    requestStoragePermission()
+                }
+                .setNegativeButton(pdf_viewer_cancel, null)
+                .show()
+        }
+    }
+
+    private fun requestStoragePermission() {
+        requestPermissionLauncher.launch(permission.WRITE_EXTERNAL_STORAGE)
+    }
+
+    private fun checkAndDownloadPdf() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            // For OS versions below Android 11, use the old method
+            if (ContextCompat.checkSelfPermission(
+                    this, permission.WRITE_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                downloadPdf()
+            } else {
+                // Request the permission
+                requestPermissionLauncher.launch(permission.WRITE_EXTERNAL_STORAGE)
+            }
+        } else {
+            // For Android 13 and above, use scoped storage or MediaStore APIs
+            downloadPdf()
         }
     }
 
