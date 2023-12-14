@@ -1,6 +1,6 @@
 package com.rajat.pdfviewer.util
 
-import android.app.*
+import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
@@ -45,6 +45,15 @@ object FileUtils {
         }
     }
 
+     fun uriToFile(context: Context,uri: Uri): File {
+        val inputStream = context.contentResolver.openInputStream(uri)
+        val tempFile = File.createTempFile("pdf_temp", ".pdf", context.cacheDir)
+        tempFile.outputStream().use { fileOut ->
+            inputStream?.copyTo(fileOut)
+        }
+        return tempFile
+    }
+
     @Throws(IOException::class)
     fun copy(inputStream: InputStream?, outputStream: OutputStream?) {
         try {
@@ -75,60 +84,15 @@ object FileUtils {
         copy(context.assets.open(assetName), outFile1)
     }
 
-    @Throws(IOException::class)
-    fun copyBytesToDownloads(context: Context, bytes: ByteArray, fileName: String?): Uri? {
-        return copyToDownloads(context, ByteArrayInputStream(bytes), bytes.size.toLong(), fileName)
-    }
-
-    @Throws(IOException::class)
-    fun copyFileToDownloads(context: Context, filePath: String, fileName: String?): Uri? {
-        val file = File(filePath)
-        if (!file.exists() || !file.isFile()){
-            throw IOException("File not found: $filePath")
-        }
-        return copyToDownloads(context, FileInputStream(filePath), file.length(), fileName)
-    }
-
-    @Throws(IOException::class)
-    fun copyToDownloads(context: Context, inputS: InputStream, size: Long, fileName: String?): Uri? {
-        val fileNameWithExt = "$fileName.pdf"
-
-        var fos: OutputStream?
-        var fileUri: Uri? = null
-        val file = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            fileNameWithExt
-        )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val resolver = context.contentResolver
-            val contentValues = ContentValues().apply {
-                put(MediaStore.Downloads.TITLE, fileName)
-                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                put(MediaStore.Downloads.MIME_TYPE, MIME_TYPE_PDF)
-                put(MediaStore.Downloads.SIZE, size)
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+    fun createPdfDocumentUri(contentResolver: ContentResolver, fileName: String): Uri {
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS)
             }
-            fileUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-            fos = resolver.openOutputStream(fileUri!!)
-
-        } else {
-            fileUri = Uri.fromFile(file);
-            fos = FileOutputStream(file);
         }
-
-        copy(inputS, fos);
-
-        val downloadManger = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        downloadManger.addCompletedDownload(
-            fileName, fileName, false,
-            MIME_TYPE_PDF, file.absolutePath, size.toLong(), true
-        )
-        Toast.makeText(
-            context,
-            "Datei erfolgreich heruntergeladen",
-            Toast.LENGTH_SHORT
-        ).show()
-
-        return fileUri
+        return contentResolver.insert(MediaStore.Files.getContentUri("external"), contentValues)
+            ?: throw IOException("Failed to create new MediaStore record.")
     }
 }
