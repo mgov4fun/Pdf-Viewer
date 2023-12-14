@@ -241,7 +241,7 @@ class PdfViewerActivity : AppCompatActivity() {
         // Handle item selection.
         return when (item.itemId) {
             R.id.download -> {
-                checkAndStartDownload()
+                checkAndDownloadPdf()
                 true
             }
 
