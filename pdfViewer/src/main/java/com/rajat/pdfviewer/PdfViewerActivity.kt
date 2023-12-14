@@ -41,7 +41,6 @@ class PdfViewerActivity : AppCompatActivity() {
     private lateinit var permission_required_title: String
     private lateinit var pdf_viewer_grant: String
     private lateinit var pdf_viewer_cancel: String
-    private var permissionGranted: Boolean? = false
     private var menuItem: MenuItem? = null
     private var fileUrl: String? = null
 
@@ -303,8 +302,6 @@ class PdfViewerActivity : AppCompatActivity() {
 
     private fun enableDownload() {
 
-        checkPermissionOnInit()
-
         pdfView.statusListener = object : PdfRendererView.StatusCallBack {
             override fun onDownloadStart() {
                 true.showProgressBar()
@@ -330,16 +327,6 @@ class PdfViewerActivity : AppCompatActivity() {
                 //Page change. Not require
             }
 
-        }
-    }
-
-    private fun checkPermissionOnInit() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                permission.WRITE_EXTERNAL_STORAGE
-            ) === PackageManager.PERMISSION_GRANTED
-        ) {
-            permissionGranted = true
         }
     }
 
@@ -407,65 +394,46 @@ class PdfViewerActivity : AppCompatActivity() {
 
     private fun downloadPdf() {
         try {
-            if (permissionGranted!!) {
-                val directoryName = intent.getStringExtra(FILE_DIRECTORY)
-                val fileName = intent.getStringExtra(FILE_TITLE)
-                val fileUrl = intent.getStringExtra(FILE_URL)
-                val filePath =
-                    if (TextUtils.isEmpty(directoryName)) "/$fileName.pdf" else "/$directoryName/$fileName.pdf"
+            val directoryName = intent.getStringExtra(FILE_DIRECTORY)
+            val fileName = intent.getStringExtra(FILE_TITLE)
+            val fileUrl = intent.getStringExtra(FILE_URL)
+            val filePath =
+                if (TextUtils.isEmpty(directoryName)) "/$fileName.pdf" else "/$directoryName/$fileName.pdf"
 
-                try {
-                    if (isPDFFromPath) {
-                        FileUtils.copyFileToDownloads(this, fileUrl!!, fileName)
-                    } else {
-                        //Url
-                        val downloadManger = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager?
-                        val downloadUrl = Uri.parse(fileUrl)
-                        val cookie = CookieManager.getInstance().getCookie(fileUrl);
-                        val request = DownloadManager.Request(downloadUrl)
-                        request.setAllowedOverRoaming(true)
-                        request.setTitle(fileName)
-                        request.setDescription("Herunterladen $fileName")
-                        request.setDestinationInExternalPublicDir(
-                            Environment.DIRECTORY_DOWNLOADS,
-                            filePath
-                        )
-                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                        if (!TextUtils.isEmpty(cookie))
-                            request.addRequestHeader("Cookie", cookie)
-                        registerReceiver(
-                            onComplete,
-                            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-                        )
-                        downloadManger!!.enqueue(request)
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(
-                        this,
-                        "Datei konnte nicht heruntergeladen werden",
-                        Toast.LENGTH_SHORT
-                    ).show()
+            try {
+                if (isPDFFromPath) {
+                    FileUtils.copyFileToDownloads(this, fileUrl!!, fileName)
+                } else {
+                    //Url
+                    val downloadManger = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager?
+                    val downloadUrl = Uri.parse(fileUrl)
+                    val cookie = CookieManager.getInstance().getCookie(fileUrl);
+                    val request = DownloadManager.Request(downloadUrl)
+                    request.setAllowedOverRoaming(true)
+                    request.setTitle(fileName)
+                    request.setDescription("Herunterladen $fileName")
+                    request.setDestinationInExternalPublicDir(
+                        Environment.DIRECTORY_DOWNLOADS,
+                        filePath
+                    )
+                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    if (!TextUtils.isEmpty(cookie))
+                        request.addRequestHeader("Cookie", cookie)
+                    registerReceiver(
+                        onComplete,
+                        IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+                    )
+                    downloadManger!!.enqueue(request)
                 }
-            } else {
-                checkPermissionOnInit()
+            } catch (e: Exception) {
+                Toast.makeText(
+                    this,
+                    "Datei konnte nicht heruntergeladen werden",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
-
         } catch (e: Exception) {
             Log.e("Error", e.toString())
-        }
-    }
-
-    private fun checkPermission(requestCode: Int) {
-        if (ContextCompat.checkSelfPermission(this, permission.WRITE_EXTERNAL_STORAGE)
-            == PackageManager.PERMISSION_DENIED
-        ) {
-            ActivityCompat.requestPermissions(
-                this, arrayOf(permission.WRITE_EXTERNAL_STORAGE),
-                requestCode
-            )
-        } else {
-            permissionGranted = true
-            downloadPdf()
         }
     }
 
@@ -479,7 +447,6 @@ class PdfViewerActivity : AppCompatActivity() {
             grantResults.isNotEmpty() &&
             grantResults[0] == PackageManager.PERMISSION_GRANTED
         ) {
-            permissionGranted = true
             downloadPdf()
         }
     }
