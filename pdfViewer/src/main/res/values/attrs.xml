@@ -31,10 +31,6 @@
         <attr name="pdf_viewer_cancel" format="reference|string"/>
     </declare-styleable>
 
-    <!-- icons -->
-    <attr name="pdfView_backIcon" format="reference" />
-    <attr name="pdfView_downloadIcon" format="reference" />
-
     <declare-styleable name="PdfRendererView_toolbar">
         <attr name="pdfView_backIcon" format="reference" />
         <attr name="pdfView_downloadIcon" format="reference" />
