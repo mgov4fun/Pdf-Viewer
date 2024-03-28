@@ -25,18 +25,15 @@
     </declare-styleable>
 
     <declare-styleable name="PdfRendererView_Strings">
-        <attr name="error_pdf_corrupted" format="reference|string"/>
-        <attr name="error_no_internet_connection" format="reference|string"/>
-        <attr name="file_saved_successfully" format="reference|string"/>
-        <attr name="file_saved_to_downloads" format="reference|string"/>
-        <attr name="file_not_downloaded_yet" format="reference|string"/>
         <attr name="permission_required" format="reference|string"/>
         <attr name="permission_required_title" format="reference|string"/>
-        <attr name="pdf_viewer_error" format="reference|string"/>
-        <attr name="pdf_viewer_retry" format="reference|string"/>
         <attr name="pdf_viewer_grant" format="reference|string"/>
         <attr name="pdf_viewer_cancel" format="reference|string"/>
     </declare-styleable>
+
+    <!-- icons -->
+    <attr name="pdfView_backIcon" format="reference" />
+    <attr name="pdfView_downloadIcon" format="reference" />
 
     <declare-styleable name="PdfRendererView_toolbar">
         <attr name="pdfView_backIcon" format="reference" />
