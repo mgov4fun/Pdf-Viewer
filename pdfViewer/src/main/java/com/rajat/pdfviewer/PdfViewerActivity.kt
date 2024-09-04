@@ -419,13 +419,18 @@ class PdfViewerActivity : AppCompatActivity() {
                     request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                     if (!TextUtils.isEmpty(cookie))
                         request.addRequestHeader("Cookie", cookie)
-                    registerReceiver(
-                        onComplete,
-                        IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-                    )
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), RECEIVER_EXPORTED)
+                    }else {
+                        registerReceiver(
+                            onComplete,
+                            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+                        )
+                    }
                     downloadManger!!.enqueue(request)
                 }
             } catch (e: Exception) {
+                Log.e("Error", e.toString())
                 Toast.makeText(
                     this,
                     "Datei konnte nicht heruntergeladen werden",
