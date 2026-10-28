@@ -24,10 +24,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.rajat.pdfviewer.util.FileUtils
 import kotlinx.android.synthetic.main.activity_pdf_viewer.*
 import kotlinx.android.synthetic.main.pdf_view_tool_bar.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 
 private const val BASE64_DATAURL = "data:application/pdf;base64,"
 
@@ -400,35 +407,36 @@ class PdfViewerActivity : AppCompatActivity() {
             val filePath =
                 if (TextUtils.isEmpty(directoryName)) "/$fileName.pdf" else "/$directoryName/$fileName.pdf"
 
+            if (isPDFFromPath) {
+                downloadLocalPdf(fileUrl, fileName)
+                return
+            }
+
             try {
-                if (isPDFFromPath) {
-                    FileUtils.copyFileToDownloads(this, fileUrl!!, fileName)
-                } else {
-                    //Url
-                    val downloadManger = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager?
-                    val downloadUrl = Uri.parse(fileUrl)
-                    val cookie = CookieManager.getInstance().getCookie(fileUrl);
-                    val request = DownloadManager.Request(downloadUrl)
-                    request.setAllowedOverRoaming(true)
-                    request.setTitle(fileName)
-                    request.setDescription("Herunterladen $fileName")
-                    request.setDestinationInExternalPublicDir(
-                        Environment.DIRECTORY_DOWNLOADS,
-                        filePath
+                // URL downloads retain their existing DownloadManager flow.
+                val downloadManger = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager?
+                val downloadUrl = Uri.parse(fileUrl)
+                val cookie = CookieManager.getInstance().getCookie(fileUrl);
+                val request = DownloadManager.Request(downloadUrl)
+                request.setAllowedOverRoaming(true)
+                request.setTitle(fileName)
+                request.setDescription("Herunterladen $fileName")
+                request.setDestinationInExternalPublicDir(
+                    Environment.DIRECTORY_DOWNLOADS,
+                    filePath
+                )
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                if (!TextUtils.isEmpty(cookie))
+                    request.addRequestHeader("Cookie", cookie)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), RECEIVER_EXPORTED)
+                }else {
+                    registerReceiver(
+                        onComplete,
+                        IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
                     )
-                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                    if (!TextUtils.isEmpty(cookie))
-                        request.addRequestHeader("Cookie", cookie)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), RECEIVER_EXPORTED)
-                    }else {
-                        registerReceiver(
-                            onComplete,
-                            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-                        )
-                    }
-                    downloadManger!!.enqueue(request)
                 }
+                downloadManger!!.enqueue(request)
             } catch (e: Exception) {
                 Log.e("Error", e.toString())
                 Toast.makeText(
@@ -439,6 +447,33 @@ class PdfViewerActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             Log.e("Error", e.toString())
+        }
+    }
+
+    private fun downloadLocalPdf(sourcePath: String?, fileName: String?) {
+        val appContext = applicationContext
+        lifecycleScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    val path = sourcePath ?: throw IOException("PDF source is missing")
+                    FileUtils.copyFileToDownloadsWithoutToast(appContext, path, fileName)
+                }
+                Toast.makeText(
+                    this@PdfViewerActivity,
+                    "Datei erfolgreich heruntergeladen",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                if (isActive) {
+                    Toast.makeText(
+                        this@PdfViewerActivity,
+                        "Datei konnte nicht heruntergeladen werden",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
         }
     }
 

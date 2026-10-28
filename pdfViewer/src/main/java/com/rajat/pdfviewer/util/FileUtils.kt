@@ -6,6 +6,8 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import android.widget.Toast
 import java.io.*
@@ -82,15 +84,41 @@ object FileUtils {
 
     @Throws(IOException::class)
     fun copyFileToDownloads(context: Context, filePath: String, fileName: String?): Uri? {
+        return copyFileToDownloadsInternal(context, filePath, fileName, true)
+    }
+
+    /** Saves a local PDF without displaying success; the caller owns lifecycle-aware feedback. */
+    internal fun copyFileToDownloadsWithoutToast(context: Context, filePath: String, fileName: String?): Uri? {
+        return copyFileToDownloadsInternal(context, filePath, fileName, false)
+    }
+
+    @Throws(IOException::class)
+    private fun copyFileToDownloadsInternal(
+        context: Context,
+        filePath: String,
+        fileName: String?,
+        showSuccessToast: Boolean
+    ): Uri? {
         val file = File(filePath)
         if (!file.exists() || !file.isFile()){
             throw IOException("File not found: $filePath")
         }
-        return copyToDownloads(context, FileInputStream(filePath), file.length(), fileName)
+        return copyToDownloads(context, FileInputStream(filePath), file.length(), fileName, showSuccessToast)
     }
 
     @Throws(IOException::class)
     fun copyToDownloads(context: Context, inputS: InputStream, size: Long, fileName: String?): Uri? {
+        return copyToDownloads(context, inputS, size, fileName, true)
+    }
+
+    @Throws(IOException::class)
+    private fun copyToDownloads(
+        context: Context,
+        inputS: InputStream,
+        size: Long,
+        fileName: String?,
+        showSuccessToast: Boolean
+    ): Uri? {
         val fileNameWithExt = normalizedPdfFileName(fileName)
         val title = fileNameWithExt.substring(0, fileNameWithExt.length - 4)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -130,7 +158,7 @@ object FileUtils {
                 if (exception is IOException) throw exception
                 throw IOException("Unable to save PDF download", exception)
             }
-            showDownloadSuccess(context)
+            if (showSuccessToast) showDownloadSuccess(context)
             return publishedUri
         }
 
@@ -153,7 +181,7 @@ object FileUtils {
             if (exception is IOException) throw exception
             throw IOException("Unable to save PDF download", exception)
         }
-        showDownloadSuccess(context)
+        if (showSuccessToast) showDownloadSuccess(context)
         return fileUri
     }
 
@@ -185,10 +213,18 @@ object FileUtils {
     }
 
     private fun showDownloadSuccess(context: Context) {
-        Toast.makeText(
-            context,
-            "Datei erfolgreich heruntergeladen",
-            Toast.LENGTH_SHORT
-        ).show()
+        val applicationContext = context.applicationContext
+        val showToast = Runnable {
+            Toast.makeText(
+                applicationContext,
+                "Datei erfolgreich heruntergeladen",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            showToast.run()
+        } else {
+            Handler(Looper.getMainLooper()).post(showToast)
+        }
     }
 }
