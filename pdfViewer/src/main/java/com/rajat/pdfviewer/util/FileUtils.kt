@@ -91,44 +91,104 @@ object FileUtils {
 
     @Throws(IOException::class)
     fun copyToDownloads(context: Context, inputS: InputStream, size: Long, fileName: String?): Uri? {
-        val fileNameWithExt = "$fileName.pdf"
+        val fileNameWithExt = normalizedPdfFileName(fileName)
+        val title = fileNameWithExt.substring(0, fileNameWithExt.length - 4)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val resolver = context.contentResolver
+            val contentValues = ContentValues().apply {
+                put(MediaStore.Downloads.TITLE, title)
+                put(MediaStore.Downloads.DISPLAY_NAME, fileNameWithExt)
+                put(MediaStore.Downloads.MIME_TYPE, MIME_TYPE_PDF)
+                put(MediaStore.Downloads.SIZE, size)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            var insertedUri: Uri? = null
+            val publishedUri = try {
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                    ?: throw IOException("Unable to create PDF download")
+                insertedUri = uri
+                val output = resolver.openOutputStream(uri)
+                    ?: throw IOException("Unable to write PDF download")
+                copy(inputS, output)
+                val published = ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                }
+                if (resolver.update(uri, published, null, null) <= 0) {
+                    throw IOException("Unable to publish PDF download")
+                }
+                uri
+            } catch (exception: Exception) {
+                closeQuietly(inputS)
+                if (insertedUri != null) {
+                    try {
+                        resolver.delete(insertedUri, null, null)
+                    } catch (_: Exception) {
+                        // Preserve the original write/publish failure.
+                    }
+                }
+                if (exception is IOException) throw exception
+                throw IOException("Unable to save PDF download", exception)
+            }
+            showDownloadSuccess(context)
+            return publishedUri
+        }
 
-        var fos: OutputStream?
-        var fileUri: Uri? = null
         val file = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
             fileNameWithExt
         )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val resolver = context.contentResolver
-            val contentValues = ContentValues().apply {
-                put(MediaStore.Downloads.TITLE, fileName)
-                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                put(MediaStore.Downloads.MIME_TYPE, MIME_TYPE_PDF)
-                put(MediaStore.Downloads.SIZE, size)
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-            }
-            fileUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-            fos = resolver.openOutputStream(fileUri!!)
-
-        } else {
-            fileUri = Uri.fromFile(file);
-            fos = FileOutputStream(file);
+        val fileUri = Uri.fromFile(file)
+        try {
+            val output = FileOutputStream(file)
+            copy(inputS, output)
+            if (!file.isFile) throw IOException("Unable to write PDF download")
+            val downloadManger = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            downloadManger.addCompletedDownload(
+                title, title, false,
+                MIME_TYPE_PDF, file.absolutePath, size, true
+            )
+        } catch (exception: Exception) {
+            closeQuietly(inputS)
+            if (exception is IOException) throw exception
+            throw IOException("Unable to save PDF download", exception)
         }
+        showDownloadSuccess(context)
+        return fileUri
+    }
 
-        copy(inputS, fos);
+    private fun normalizedPdfFileName(fileName: String?): String {
+        if (fileName.isNullOrBlank()) return "Dokument.pdf"
+        val basename = fileName.replace('\\', '/').substringAfterLast('/')
+        val safe = StringBuilder()
+        var offset = 0
+        var codePointCount = 0
+        while (offset < basename.length && codePointCount < 120) {
+            val codePoint = basename.codePointAt(offset)
+            offset += Character.charCount(codePoint)
+            if (!Character.isISOControl(codePoint) && codePoint != '/'.code) {
+                safe.appendCodePoint(codePoint)
+                codePointCount++
+            }
+        }
+        val normalized = safe.toString().trim()
+        if (normalized.isBlank() || normalized == "." || normalized == "..") return "Dokument.pdf"
+        return if (normalized.endsWith(".pdf", ignoreCase = true)) normalized else "$normalized.pdf"
+    }
 
-        val downloadManger = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        downloadManger.addCompletedDownload(
-            fileName, fileName, false,
-            MIME_TYPE_PDF, file.absolutePath, size.toLong(), true
-        )
+    private fun closeQuietly(input: InputStream) {
+        try {
+            input.close()
+        } catch (_: IOException) {
+            // Preserve the original failure.
+        }
+    }
+
+    private fun showDownloadSuccess(context: Context) {
         Toast.makeText(
             context,
             "Datei erfolgreich heruntergeladen",
             Toast.LENGTH_SHORT
         ).show()
-
-        return fileUri
     }
 }
